@@ -2,30 +2,17 @@ import streamlit as st
 import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.naive_bayes import MultinomialNB
-import mysql.connector
+# import mysql.connector  # DIMATIKAN: Karena di internet tidak ada localhost XAMPP
 import matplotlib.pyplot as plt
 import os
 
 # --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Deteksi Spam Email", page_icon="🛡️")
 
-# --- 2. FUNGSI DATABASE XAMPP (ANTI-ERROR) ---
+# --- 2. FUNGSI DATABASE (DIMATIKAN UNTUK ONLINE) ---
 def simpan_ke_db(pesan, status):
-    try:
-        conn = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="",
-            database="db_spam"
-        )
-        cursor = conn.cursor()
-        query = "INSERT INTO riwayat (teks, hasil) VALUES (%s, %s)"
-        cursor.execute(query, (pesan, status))
-        conn.commit()
-        conn.close()
-    except:
-        # Jika XAMPP mati, aplikasi tidak akan error, hanya muncul info di sidebar
-        st.sidebar.warning("⚠️ Gagal menyimpan ke Database (XAMPP Mati?)")
+    # Fitur simpan database dilewati agar tidak error di internet
+    pass
 
 # --- 3. FUNGSI AI (STABIL) ---
 @st.cache_resource
@@ -39,6 +26,7 @@ def build_ai_model():
         df = df.dropna()
         
         vectorizer = CountVectorizer(stop_words='english')
+        # Pastikan kolom yang diambil benar (Kolom 1 adalah teks, Kolom 0 adalah label)
         X = vectorizer.fit_transform(df[df.columns[1]].values.astype('U'))
         model = MultinomialNB()
         model.fit(X, df[df.columns[0]])
@@ -57,7 +45,8 @@ if df_asli is not None:
     st.sidebar.header("📊 Statistik Data")
     counts = df_asli[df_asli.columns[0]].value_counts()
     fig, ax = plt.subplots(figsize=(4, 4))
-    ax.pie(counts, labels=['Aman (0)', 'Spam (1)'], autopct='%1.1f%%', colors=['#4CAF50', '#FF5252'])
+    # Label disesuaikan dengan isi CSV kamu (biasanya 0=Aman, 1=Spam)
+    ax.pie(counts, labels=['Aman', 'Spam'], autopct='%1.1f%%', colors=['#4CAF50', '#FF5252'])
     st.sidebar.pyplot(fig)
 
     # AREA INPUT
@@ -69,6 +58,8 @@ if df_asli is not None:
             input_vec = vectorizer.transform([user_input.lower()])
             hasil = model.predict(input_vec)
             prob = model.predict_proba(input_vec)
+            
+            # Logika penentuan status
             status = "SPAM" if str(hasil[0]) == '1' else "AMAN"
             
             st.divider()
@@ -79,20 +70,15 @@ if df_asli is not None:
                 st.success(f"### ✅ HASIL: PESAN INI {status}")
                 st.write(f"Keyakinan AI: {prob[0][0]*100:.1f}%")
             
-            # Simpan ke Database
+            # Fungsi database tidak akan dijalankan
             simpan_ke_db(user_input, status)
         else:
             st.warning("Mohon ketikkan pesan terlebih dahulu.")
 
-    # TABEL RIWAYAT
+    # TABEL RIWAYAT (DINONAKTIFKAN DI VERSI ONLINE)
     st.divider()
-    with st.expander("🕒 Lihat Riwayat Pengecekan dari Database"):
-        try:
-            conn = mysql.connector.connect(host="localhost", user="root", password="", database="db_spam")
-            df_db = pd.read_sql("SELECT teks, hasil, waktu FROM riwayat ORDER BY waktu DESC LIMIT 10", conn)
-            st.table(df_db)
-            conn.close()
-        except:
-            st.info("Hubungkan ke XAMPP MySQL untuk mengaktifkan fitur riwayat.")
+    with st.expander("🕒 Info Riwayat"):
+        st.info("Fitur riwayat database MySQL (XAMPP) hanya tersedia di versi lokal (laptop).")
+
 else:
-    st.error("File 'spam_data.csv' tidak ditemukan atau rusak!")
+    st.error("File 'spam_data.csv' tidak ditemukan atau rusak! Pastikan file CSV sudah di-upload ke GitHub.")
