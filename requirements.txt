@@ -2,4 +2,3 @@ streamlit
 pandas
 scikit-learn
 mysql-connector-python
-matplotlib
